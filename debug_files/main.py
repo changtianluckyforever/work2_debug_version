@@ -149,7 +149,7 @@ def train_meta(args):
     t = time.time()
     F1_valid_best = {ii: -1.0 for ii in ["all", "type", "span"]}
     F1_test = -1.0
-    best_step, protect_step = -1.0, 100 if args.train_mode != "type" else 50
+    best_step, protect_step = -1.0, 10 if args.train_mode != "type" else 5   # change them from 100, 50 to 10, 5
 
     for step in range(args.max_meta_steps):
         progress = 1.0 * step / args.max_meta_steps
@@ -445,7 +445,7 @@ if __name__ == "__main__":
         "--max_meta_steps",
         type=int,
         help="maximal steps token for meta training.",
-        default=5001,
+        default=500,    # change it from 5001 to 500
     )
     parser.add_argument("--eval_every_meta_steps", type=int, default=500)
     parser.add_argument(
