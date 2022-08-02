@@ -511,6 +511,9 @@ class Learner(nn.Module):
                 print(p)
                 print(p.shape)
                 exit()
+                taregt, p = self.decode_entity(
+                    e_logits, result, types, eval_query[0]["entities"]
+                )
                 predes.extend(p)
 
                 self.load_weights(names, weights)

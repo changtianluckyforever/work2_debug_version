@@ -1,14 +1,14 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-SEEDS=(171)
+SEEDS=(171 354 550 667 985)
 N=5 # 5 or 10
 K=1 # 1 or 5
 mode=inter # inter or intra
 
 for seed in ${SEEDS[@]}; do
     python3 main.py \
-        --gpu_device=2 \
+        --gpu_device=1 \
         --seed=${seed} \
         --mode=${mode} \
         --N=${N} \
@@ -29,7 +29,7 @@ for seed in ${SEEDS[@]}; do
 
     python3 main.py \
         --seed=${seed} \
-        --gpu_device=2 \
+        --gpu_device=1 \
         --lr_inner=1e-4 \
         --lr_meta=1e-4 \
         --mode=${mode} \
@@ -49,7 +49,7 @@ for seed in ${SEEDS[@]}; do
     cp models-${N}-${K}-${mode}/bert-base-uncased-innerSteps_2-innerSize_32-lrInner_0.0001-lrMeta_0.0001-maxSteps_5001-seed_${seed}-name_10-k_100_type_2_32_3_10_10/en_type_pytorch_model.bin models-${N}-${K}-${mode}/bert-base-uncased-innerSteps_2-innerSize_32-lrInner_3e-05-lrMeta_3e-05-maxSteps_5001-seed_${seed}-name_10-k_100_2_32_3_max_loss_2_5_BIOES
 
     python3 main.py \
-        --gpu_device=2 \
+        --gpu_device=1 \
         --seed=${seed} \
         --N=${N} \
         --K=${K} \

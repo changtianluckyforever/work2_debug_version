@@ -1,7 +1,7 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-SEEDS=(171)
+SEEDS=(171 354 550 667 985)
 N=1 # 1 or 2 or 3 or 4
 K=1 # 1 or 5
 mode=inter
