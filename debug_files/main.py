@@ -164,6 +164,18 @@ def train_meta(args):
                 progress=progress,
                 inner_steps=args.inner_steps,
             )
+
+        elif args.use_ensemble:
+            print('we are running on the ktsn ensemble model.')
+            use_ensemble = args.use_ensemble
+            span_loss, type_loss = learner.forward_ensemble(
+                batch_query,
+                batch_support,
+                progress=progress,
+                inner_steps=args.inner_steps,
+                use_ensemble=use_ensemble,
+            )
+
         else:
             span_loss, type_loss = learner.forward_meta(
                 batch_query,
@@ -554,6 +566,11 @@ if __name__ == "__main__":
         "--use_supervise",
         action="store_true",
         help="if true, will convert the bpe encode result to word level.",
+    )
+    parser.add_argument(
+        "--use_ensemble",
+        action="store_true",
+        help="if true, will use the ensemble model.",
     )
 
     args = parser.parse_args()

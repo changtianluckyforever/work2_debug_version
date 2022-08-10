@@ -9,7 +9,7 @@ import torch.nn as nn
 from torch.nn import CrossEntropyLoss
 
 from transformers import BertForTokenClassification
-
+from collections import OrderedDict
 
 logger = logging.getLogger(__file__)
 
@@ -22,6 +22,89 @@ class BertForTokenClassification_(BertForTokenClassification):
         self.type_loss = nn.functional.cross_entropy
         self.dropout = nn.Dropout(p=0.1)
         self.log_softmax = nn.functional.log_softmax
+
+
+    def set_ensemble(self, num_labels = 5):
+        #change this part if we want to adjust the net shape
+        self.share1 = nn.Sequential(
+            nn.Linear(self.input_size, self.input_size),
+            nn.GELU(),
+            nn.Linear(self.input_size, self.input_size),
+            nn.GELU(),
+            nn.Linear(self.input_size, self.input_size),
+        )
+        self.fv1 = nn.Sequential(
+            nn.Linear(self.input_size, 300),
+            nn.GELU(),
+            nn.Linear(300, 1),
+        )
+        self.dv1 = nn.Sequential(
+            nn.Linear(self.input_size, 300),
+            nn.GELU(),
+            nn.Linear(300, 100),
+            nn.GELU(),
+            nn.Linear(300, num_labels),
+        )
+
+        self.share2 = nn.Sequential(
+            nn.Linear(self.input_size, 200),
+            nn.GELU(),
+            nn.Linear(200, 200),
+            nn.GELU(),
+            nn.Linear(200, 200),
+        )
+        self.fv2 = nn.Sequential(
+            nn.Linear(200, 100),
+            nn.GELU(),
+            nn.Linear(100, 1),
+        )
+        self.dv2 = nn.Sequential(
+            nn.Linear(200, 100),
+            nn.GELU(),
+            nn.Linear(100, 50),
+            nn.GELU(),
+            nn.Linear(50, num_labels),
+        )
+
+        self.share3 = nn.Sequential(
+            nn.Linear(self.input_size, 500),
+            nn.GELU(),
+            nn.Linear(500, 300),
+            nn.GELU(),
+            nn.Linear(300, 150),
+        )
+        self.fv3 = nn.Sequential(
+            nn.Linear(150, 80),
+            nn.GELU(),
+            nn.Linear(80, 1),
+        )
+        self.dv3 = nn.Sequential(
+            nn.Linear(150, 100),
+            nn.GELU(),
+            nn.Linear(100, 50),
+            nn.GELU(),
+            nn.Linear(50, num_labels),
+        )
+
+        self.share4 = nn.Sequential(
+            nn.Linear(self.input_size, 900),
+            nn.GELU(),
+            nn.Linear(900, 500),
+            nn.GELU(),
+            nn.Linear(500, 300),
+        )
+        self.fv4 = nn.Sequential(
+            nn.Linear(300, 100),
+            nn.GELU(),
+            nn.Linear(100, 1),
+        )
+        self.dv4 = nn.Sequential(
+            nn.Linear(300, 150),
+            nn.GELU(),
+            nn.Linear(150, 80),
+            nn.GELU(),
+            nn.Linear(80, num_labels),
+        )
 
     def set_config(
         self,
@@ -79,6 +162,7 @@ class BertForTokenClassification_(BertForTokenClassification):
         is_update_type_embedding: bool = False,
         lambda_max_loss: float = 0.0,
         sim_k: float = 0,
+        use_ensemble: bool = False,
     ):
         max_len = (attention_mask != 0).max(0)[0].nonzero(as_tuple=False)[-1].item() + 1
         input_ids = input_ids[:, :max_len]
@@ -91,9 +175,33 @@ class BertForTokenClassification_(BertForTokenClassification):
         sequence_output = self.dropout(output[0])
 
         if self.train_mode != "type":
-            logits = self.classifier(
-                sequence_output
-            )  # batch_size x seq_len x num_labels
+            if use_ensemble:
+                print('we are using the ensemble model')
+                share1 = self.share1(sequence_output)
+                fv1 = self.fv1(share1)
+                dv1 = self.dv1(share1)
+                logits1 = fv1.expand(dv1.size()) + dv1 - dv1.mean(-1).unsqueeze(-1).expand(dv1.size())
+
+                share2 = self.share2(sequence_output)
+                fv2 = self.fv2(share2)
+                dv2 = self.dv2(share2)
+                logits2 = fv2.expand(dv2.size()) + dv2 - dv2.mean(-1).unsqueeze(-1).expand(dv2.size())
+
+                share3 = self.share3(sequence_output)
+                fv3 = self.fv3(share3)
+                dv3 = self.dv3(share3)
+                logits3 = fv3.expand(dv3.size()) + dv3 - dv3.mean(-1).unsqueeze(-1).expand(dv3.size())
+
+                share4 = self.share4(sequence_output)
+                fv4 = self.fv4(share4)
+                dv4 = self.dv1(share4)
+                logits4 = fv4.expand(dv4.size()) + dv4 - dv4.mean(-1).unsqueeze(-1).expand(dv4.size())
+                logits = (logits1 + logits2+ logits3+logits4)/4
+
+            else:
+                logits = self.classifier(
+                    sequence_output
+                )  # batch_size x seq_len x num_labels
         else:
             logits = None
         if not self.shared_bert:
@@ -176,7 +284,7 @@ class BertForTokenClassification_(BertForTokenClassification):
 
                     loss += lambda_max_loss * torch.mean(torch.stack(active_max))
             else:
-                raise ValueError("Miss attention mask!")
+                raise ValueError("Miss attention mask!") 
         else:
             loss = None
 

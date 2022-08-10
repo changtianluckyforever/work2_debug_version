@@ -60,13 +60,16 @@ class Learner(nn.Module):
         self.is_debug = args.debug
         self.train_mode = args.train_mode
         self.eval_mode = args.eval_mode
+        self.use_ensemble = args.use_ensemble
         self.model_dir = model_dir
         self.args = args
         self.freeze_layer = freeze_layer
 
         num_labels = len(label_list)
+        self.num_labels = num_labels
 
         # load model
+        # the following is used only when evaluate function is invoked as the model_dir isnt empty.
         if model_dir != "":
             if self.eval_mode != "two-stage":
                 self.load_model(self.eval_mode)
@@ -79,6 +82,10 @@ class Learner(nn.Module):
                 num_labels=num_labels,
                 output_hidden_states=True,
             ).to(args.device)
+            if self.use_ensemble:
+                self.model.set_ensemble(num_labels=self.num_labels)
+            else:
+                pass
 
         if self.eval_mode != "two-stage":
             self.model.set_config(
@@ -196,6 +203,7 @@ class Learner(nn.Module):
     def forward_supervise(self, batch_query, batch_support, progress, inner_steps):
         span_losses, type_losses = [], []
         task_num = len(batch_query)
+        num_labels = len(self.label_list)
 
         for task_id in range(task_num):
             _, _, loss, type_loss = self.model.forward_wuqh(
@@ -208,6 +216,71 @@ class Learner(nn.Module):
                 e_type_mask=batch_query[task_id]["e_type_mask"],
                 entity_types=self.entity_types,
                 lambda_max_loss=self.args.lambda_max_loss,
+            )
+            if loss is not None:
+                span_losses.append(loss.item())
+            if type_loss is not None:
+                type_losses.append(type_loss.item())
+            if loss is None:
+                loss = type_loss
+            elif type_loss is not None:
+                loss = loss + type_loss
+
+            loss.backward()
+            self.opt.step()
+            self.scheduler.step()
+            self.model.zero_grad()
+
+        for task_id in range(task_num):
+            _, _, loss, type_loss = self.model.forward_wuqh(
+                input_ids=batch_support[task_id]["input_ids"],
+                attention_mask=batch_support[task_id]["input_mask"],
+                token_type_ids=batch_support[task_id]["segment_ids"],
+                labels=batch_support[task_id]["label_ids"],
+                e_mask=batch_support[task_id]["e_mask"],
+                e_type_ids=batch_support[task_id]["e_type_ids"],
+                e_type_mask=batch_support[task_id]["e_type_mask"],
+                entity_types=self.entity_types,
+                lambda_max_loss=self.args.lambda_max_loss,
+            )
+            if loss is not None:
+                span_losses.append(loss.item())
+            if type_loss is not None:
+                type_losses.append(type_loss.item())
+            if loss is None:
+                loss = type_loss
+            elif type_loss is not None:
+                loss = loss + type_loss
+
+            loss.backward()
+            self.opt.step()
+            self.scheduler.step()
+            self.model.zero_grad()
+
+        return (
+            np.mean(span_losses) if span_losses else 0,
+            np.mean(type_losses) if type_losses else 0,
+        )
+
+
+    def forward_ensemble(self, batch_query, batch_support, progress, inner_steps, use_ensemble = False):
+        span_losses, type_losses = [], []
+        task_num = len(batch_query)
+        num_labels = len(self.label_list)
+        use_ensemble = use_ensemble
+
+        for task_id in range(task_num):
+            _, _, loss, type_loss = self.model.forward_wuqh(
+                input_ids=batch_query[task_id]["input_ids"],
+                attention_mask=batch_query[task_id]["input_mask"],
+                token_type_ids=batch_query[task_id]["segment_ids"],
+                labels=batch_query[task_id]["label_ids"],
+                e_mask=batch_query[task_id]["e_mask"],
+                e_type_ids=batch_query[task_id]["e_type_ids"],
+                e_type_mask=batch_query[task_id]["e_type_mask"],
+                entity_types=self.entity_types,
+                lambda_max_loss=self.args.lambda_max_loss,
+                use_ensemble=use_ensemble
             )
             if loss is not None:
                 span_losses.append(loss.item())
@@ -491,26 +564,6 @@ class Learner(nn.Module):
                         )
                         type_preds.append(type_pred)
                         type_g.append(type_ground)
-                print('**************we are here to do experiments')
-                print('types')
-                print(types)
-                print(types.shape)
-                print('e_logits')
-                print(e_logits.shape)
-                print(e_logits)
-                print('result')
-                print(result.shape)
-                print(result)
-                taregt, p = self.decode_entity(
-                    e_logits, result, types, eval_query[0]["entities"]
-                )
-                print('target')
-                print(target)
-                print(target.shape)
-                print('p')
-                print(p)
-                print(p.shape)
-                exit()
                 taregt, p = self.decode_entity(
                     e_logits, result, types, eval_query[0]["entities"]
                 )
@@ -635,6 +688,8 @@ class Learner(nn.Module):
         self.model = BertForTokenClassification_.from_pretrained(
             self.bert_model, num_labels=len(self.label_list), output_hidden_states=True
         )
+        if self.use_ensemble:
+            self.model.set_ensemble(num_labels=self.num_labels)
         self.model.set_config(
             self.args.use_classify,
             self.args.distance_mode,
