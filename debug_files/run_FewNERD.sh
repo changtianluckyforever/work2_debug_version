@@ -14,6 +14,7 @@ for seed in ${SEEDS[@]}; do
         --N=${N} \
         --K=${K} \
         --similar_k=10 \
+        --use_ensemble \
         --eval_every_meta_steps=100 \
         --name=10-k_100_2_32_3_max_loss_2_5_BIOES \
         --train_mode=span \
@@ -30,6 +31,7 @@ for seed in ${SEEDS[@]}; do
     python3 main.py \
         --seed=${seed} \
         --gpu_device=1 \
+        --use_ensemble \
         --lr_inner=1e-4 \
         --lr_meta=1e-4 \
         --mode=${mode} \
@@ -58,6 +60,7 @@ for seed in ${SEEDS[@]}; do
         --name=10-k_100_2_32_3_max_loss_2_5_BIOES \
         --concat_types=None \
         --test_only \
+        --use_ensemble \
         --eval_mode=two-stage \
         --inner_steps=2 \
         --inner_size=32 \
