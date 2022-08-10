@@ -194,7 +194,7 @@ class BertForTokenClassification_(BertForTokenClassification):
 
                 share4 = self.share4(sequence_output)
                 fv4 = self.fv4(share4)
-                dv4 = self.dv1(share4)
+                dv4 = self.dv4(share4)
                 logits4 = fv4.expand(dv4.size()) + dv4 - dv4.mean(-1).unsqueeze(-1).expand(dv4.size())
                 logits = (logits1 + logits2+ logits3+logits4)/4
 
