@@ -43,7 +43,7 @@ class BertForTokenClassification_(BertForTokenClassification):
             nn.GELU(),
             nn.Linear(300, 100),
             nn.GELU(),
-            nn.Linear(300, num_labels),
+            nn.Linear(100, num_labels),
         )
 
         self.share2 = nn.Sequential(
@@ -284,7 +284,7 @@ class BertForTokenClassification_(BertForTokenClassification):
 
                     loss += lambda_max_loss * torch.mean(torch.stack(active_max))
             else:
-                raise ValueError("Miss attention mask!") 
+                raise ValueError("Miss attention mask!")
         else:
             loss = None
 

@@ -264,10 +264,12 @@ class Learner(nn.Module):
 
 
     def forward_ensemble(self, batch_query, batch_support, progress, inner_steps, use_ensemble = False):
+        print('the ensemble label is', use_ensemble)
         span_losses, type_losses = [], []
         task_num = len(batch_query)
         num_labels = len(self.label_list)
         use_ensemble = use_ensemble
+        print('we are using the new ensemble model')
 
         for task_id in range(task_num):
             _, _, loss, type_loss = self.model.forward_wuqh(

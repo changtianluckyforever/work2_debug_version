@@ -166,7 +166,7 @@ def train_meta(args):
             )
 
         elif args.use_ensemble:
-            print('we are running on the ktsn ensemble model.')
+            #print('we are running on the ktsn ensemble model.')
             use_ensemble = args.use_ensemble
             span_loss, type_loss = learner.forward_ensemble(
                 batch_query,
