@@ -26,8 +26,7 @@ for seed in ${SEEDS[@]}; do
         --inner_lambda_max_loss=5 \
         --tagging_scheme=BIOES \
         --viterbi=hard \
-        --concat_types=None \
-        --ignore_eval_test
+        --concat_types=None
 
     python3 main.py \
         --dataset Domain \
@@ -47,6 +46,7 @@ for seed in ${SEEDS[@]}; do
         --inner_steps=2 \
         --inner_size=32 \
         --max_ft_steps=3 \
+        --tagging_scheme=BIOES \
         --concat_types=None \
         --lambda_max_loss=2.0
 

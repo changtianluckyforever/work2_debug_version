@@ -65,7 +65,7 @@ class Learner(nn.Module):
         self.args = args
         self.freeze_layer = freeze_layer
 
-        num_labels = len(label_list)
+        num_labels = len(self.label_list)
         self.num_labels = num_labels
 
         # load model
@@ -188,6 +188,7 @@ class Learner(nn.Module):
                 is_update_type_embedding=True,
                 lambda_max_loss=self.args.inner_lambda_max_loss,
                 sim_k=self.args.inner_similar_k,
+                use_ensemble=self.args.use_ensemble
             )
             if loss is None:
                 loss = type_loss
@@ -264,12 +265,12 @@ class Learner(nn.Module):
 
 
     def forward_ensemble(self, batch_query, batch_support, progress, inner_steps, use_ensemble = False):
-        print('the ensemble label is', use_ensemble)
+        # print('the ensemble label is', use_ensemble)
         span_losses, type_losses = [], []
         task_num = len(batch_query)
         num_labels = len(self.label_list)
         use_ensemble = use_ensemble
-        print('we are using the new ensemble model')
+        # print('we are using the new ensemble model')
 
         for task_id in range(task_num):
             _, _, loss, type_loss = self.model.forward_wuqh(
@@ -299,7 +300,7 @@ class Learner(nn.Module):
             self.model.zero_grad()
 
         for task_id in range(task_num):
-            _, _, loss, type_loss = self.model.forward_wuqh(
+            _, _, loss, type_loss = self.model.forw ard_wuqh(
                 input_ids=batch_support[task_id]["input_ids"],
                 attention_mask=batch_support[task_id]["input_mask"],
                 token_type_ids=batch_support[task_id]["segment_ids"],
@@ -309,6 +310,7 @@ class Learner(nn.Module):
                 e_type_mask=batch_support[task_id]["e_type_mask"],
                 entity_types=self.entity_types,
                 lambda_max_loss=self.args.lambda_max_loss,
+                use_ensemble=use_ensemble
             )
             if loss is not None:
                 span_losses.append(loss.item())
@@ -493,7 +495,7 @@ class Learner(nn.Module):
                     )
                     targets.extend(eval_query[0]["entities"])
                     spans.extend(result)
-
+                    # the above part is for testing span detection
             nb_eval_steps += 1
 
             self.load_weights(names, weights)
@@ -520,7 +522,7 @@ class Learner(nn.Module):
 
                 # train on support examples
                 self.inner_update(eval_support[0], lr_curr=lr, inner_steps=type_steps)
-
+                # here we collect preceding logits to detect spans.
                 # eval on pseudo query examples (test example)
                 self.model.eval()
                 with torch.no_grad():
@@ -531,7 +533,7 @@ class Learner(nn.Module):
                         eval_query[0]["input_mask"],
                         viterbi_decoder,
                     )
-
+                    # we collect e_logits for the next add modules testing
                     _, e_logits, _, tmp_eval_type_loss = self.batch_test(
                         {
                             "input_ids": eval_query[0]["input_ids"],
@@ -546,7 +548,7 @@ class Learner(nn.Module):
                     )
 
                     eval_loss += tmp_eval_type_loss
-
+                    # the below part is solely for testing typing entities.
                     if self.eval_mode == "two-stage":
                         logits, e_ls, tmp_eval_loss, _ = self.batch_test(
                             {
@@ -569,7 +571,7 @@ class Learner(nn.Module):
                 taregt, p = self.decode_entity(
                     e_logits, result, types, eval_query[0]["entities"]
                 )
-                predes.extend(p)
+                predes.extend(p) ###last line, it is calculating f1 for all modules
 
                 self.load_weights(names, weights)
                 if item_id % 200 == 0:
@@ -834,6 +836,7 @@ class Learner(nn.Module):
         )
 
     def decode_entity(self, e_logits, result, types, entities):
+        # this is not related with loss now.
         if self.is_debug:
             joblib.dump([e_logits, result, types, entities], "debug/e.pkl")
         target, preds = entities, []

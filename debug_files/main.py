@@ -73,7 +73,7 @@ def replace_type_embedding(learner, args):
 def train_meta(args):
     logger.info("********** Scheme: Meta Learning **********")
     label_list = get_label_list(args)
-
+    print('the label list is ', label_list)
     valid_data_path = get_data_path(args, "dev")
     valid_corpus = Corpus(
         logger,
@@ -277,6 +277,7 @@ def test(args, learner, corpus, types: str):
 def evaluate(args):
     logger.info("********** Scheme: Meta Test **********")
     label_list = get_label_list(args)
+    print('the label list in evaluate is:', label_list)
 
     valid_data_path = get_data_path(args, "dev")
     valid_corpus = Corpus(
