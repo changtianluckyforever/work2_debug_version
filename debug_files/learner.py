@@ -300,7 +300,7 @@ class Learner(nn.Module):
             self.model.zero_grad()
 
         for task_id in range(task_num):
-            _, _, loss, type_loss = self.model.forw ard_wuqh(
+            _, _, loss, type_loss = self.model.forward_wuqh(
                 input_ids=batch_support[task_id]["input_ids"],
                 attention_mask=batch_support[task_id]["input_mask"],
                 token_type_ids=batch_support[task_id]["segment_ids"],
